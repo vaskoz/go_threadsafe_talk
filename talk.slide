@@ -1,0 +1,141 @@
+Writing a Threadsafe library?
+Here's how to know for sure!
+26 Mar 2015
+Tags: denvergophers, sendgrid, gophercon2015
+
+Vasko Zdravevski
+Engineering Team Lead, SendGrid
+vasko.zdravevski@sendgrid.com
+http://github.com/vaskoz/go_threadsafe_talk
+@vaskoz
+
+* Super brief, obligatory "Who am I?" slide
+- Engineer with 15 years of professional software development, and more unprofessionally.
+- Over 1 year of fulltime Golang development
+- One of the few who abstains from bashing popular workhorses like *Java/JVM* and *C#/CLR* or even *Ruby* even though it's in fashion
+- Life long learner
+
+* Threadsafety in Go
+- At SendGrid, we battle highly concurrent and parallel problems everyday
+- GOMAXPROCS is set to a LOT!
+- We write libraries and depend on 3rd party libraries in our applications
+- Nearly all of these libraries have race conditions
+- The race detector isn't perfect, so we can't just depend on that
+.link file:///Users/vaskozdravevski/code/go/doc/articles/race_detector.html Go Race Detector Article
+
+* Race Detector doesn't catch everything and has quirks
+- Guarantee is only "no false positives"
+- Multiple races in a single method, only the first will be displayed
+- TODO: add code example here, maybe a live DEMO!
+- Detects only actual race conditions it sees, so requires heavy load testing to expose most of them
+
+* So how does SendGrid avoid race conditions
+- Judicious use of 3rd party libraries
+- Code review of those libraries
+- Submit PRs to those found with data races (e.g. riaken-core)
+- A set of tests that demonstrate multiple data races
+- Stress a few ways to guarantee avoidance of data races
+
+* Clarification: My definition of a threadsafe library
+
+"Data races should NOT be possible within your library's code, no matter what the client of your library does"
+
+* Example: riaken-core
+.code -numbers riaken_test.go /START_TESTS/,/END_TESTS/
+
+* Let's take a closer look at this example
+
+Whether the addrs variable is passed in via closure
+
+.code riaken_test.go /START_CLOSURE_INITIALIZATION/,/END_CLOSURE_INITIALIZATION/
+
+or it is passed in as a goroutine parameter
+
+.code riaken_test.go /START_PARAMETER_PASSING/,/END_PARAMETER_PASSING/
+
+the modification of the slice's underlying data storage causes a race condition
+
+.code -numbers riaken_test.go /START_PARAMETER_MODIFICATION/,/END_PARAMETER_MODIFICATION/
+
+* In libraries that are expected to be thread-safe ...
+
+* Passing Slices as function/method parameters is a problem
+
+.code slice_test.go /START_TEST_SLICES/,/END_TEST_SLICES/
+
+.code slice_test.go /START_DANGEROUS_SLICES/,/END_DANGEROUS_SLICES/
+
+* Passing Variadic as function/method parameters is also bad
+
+.code slice_test.go /START_TEST_VARIADIC/,/END_TEST_VARIADIC/
+
+.code slice_test.go /START_DANGEROUS_VARIADIC/,/END_DANGEROUS_VARIADIC/
+
+* Passing Variadic can be ok, if you don't use "..."
+
+.code slice_test.go /START_TEST_VARIADIC_SEPARATE/,/END_TEST_VARIADIC_SEPARATE/
+
+.code slice_test.go /START_DANGEROUS_VARIADIC/,/END_DANGEROUS_VARIADIC/
+
+* Arrays are safe (fixed length)
+
+.code array_test.go /START_TESTS/,/END_TESTS/
+
+* Structs that are copied
+
+.code struct_test.go /START_SAFE_STRUCT_TEST/,/END_SAFE_STRUCT_TEST/
+
+.code struct_test.go /START_SAFE_STRUCT/,/END_SAFE_STRUCT/
+
+* Pointers to structs
+
+.code struct_test.go /START_POINTER_STRUCT_TEST/,/END_POINTER_STRUCT_TEST/
+
+.code struct_test.go /START_POINTER_STRUCT/,/END_POINTER_STRUCT/
+
+* How you can protect using structs/interfaces
+
+.code struct_test.go /START_INTERFACE_STRUCTS/,/END_INTERFACE_STRUCTS/
+
+.code struct_test.go /START_PROTECTED_STRUCT/,/END_PROTECTED_STRUCT/
+
+* You need to protect all accesses to struct
+
+.code struct_test.go /START_FIRST_NAME/,/END_FIRST_NAME/
+
+.code struct_test.go /START_SET_FIRST_NAME/,/END_SET_FIRST_NAME/
+
+* You can run all these tests yourself
+
+  go test -race -v
+
+You can even run tests in parallel, but output becomes hard to read
+
+  go test -parallel $GOMAXPROCS -race -v
+
+* You can use Go 1.5's trace tool
+
+This will generate trace information and a test binary
+
+  go test -trace=trace.out
+
+This will launch a browser window based on your test binary and trace output
+
+  go tool trace go_data_race_talk.test trace.out
+
+* Summary slide
+- Data races happen due to accidental sharing of state
+- Use shallow objects that can be copied: make sure you have a complete copy
+- Use structs that you can mutex access to
+- Avoid slices, variadics "..." (exception if separated), pointers to structs
+- Don't let your library be where the data race occurs
+
+* Sound interesting? Come work at SendGrid
+
+.link sendgrid.com/careers
+
+Many positions open in 4 offices: 
+- Denver, CO
+- Boulder, CO
+- Redwood City, CA (Bay Area)
+- Orange, CA (Orange County)
