@@ -42,17 +42,33 @@ func Benchmark90R10WMutex(b *testing.B) {
 	}
 }
 
-func BenchmarkFmtPrintln(b *testing.B) {
+func BenchmarkFmtPrint(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		fmt.Print("")
 	}
 }
 
-func BenchmarkMutexFmtPrintln(b *testing.B) {
+func BenchmarkMutexFmtPrint(b *testing.B) {
 	var mutex sync.Mutex
 	for i := 0; i < b.N; i++ {
 		mutex.Lock()
 		fmt.Print("")
 		mutex.Unlock()
+	}
+}
+
+func BenchmarkUnbufferedChannelFmtPrint(b *testing.B) {
+	c := make(chan string)
+	for i := 0; i < b.N; i++ {
+		go func() { c <- "" }()
+		fmt.Print(<-c)
+	}
+}
+
+func BenchmarkBufferedChannelFmtPrint(b *testing.B) {
+	c := make(chan string, 10)
+	for i := 0; i < b.N; i++ {
+		go func() { c <- "" }()
+		<-c
 	}
 }
