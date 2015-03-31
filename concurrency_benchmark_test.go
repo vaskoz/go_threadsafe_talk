@@ -69,7 +69,7 @@ func BenchmarkBufferedChannelFmtPrint(b *testing.B) {
 	c := make(chan string, 10)
 	for i := 0; i < b.N; i++ {
 		go func() { c <- "" }()
-		<-c
+		fmt.Print(<-c)
 	}
 }
 
@@ -82,8 +82,47 @@ func BenchmarkConcurrentRWMutexFmtPrint(b *testing.B) {
 			rwMutex.RUnlock()
 		}()
 	}
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		rwMutex.Lock()
+		fmt.Print("")
 		rwMutex.Unlock()
 	}
+}
+
+func BenchmarkConcurrentMutexFmtPrint(b *testing.B) {
+	var mutex sync.Mutex
+	// Load contention generation only
+	for i := 0; i < 1000000; i++ {
+		go func() {
+			mutex.Lock()
+			mutex.Unlock()
+		}()
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		mutex.Lock()
+		fmt.Print("")
+		mutex.Unlock()
+	}
+}
+
+func BenchmarkParallelMutexFmtPrint(b *testing.B) {
+	var mutex sync.Mutex
+	// Load contention generation only
+	for i := 0; i < 1000000; i++ {
+		go func() {
+			mutex.Lock()
+			mutex.Unlock()
+		}()
+	}
+	b.ResetTimer()
+	b.SetParallelism(10000)
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			mutex.Lock()
+			fmt.Print("")
+			mutex.Unlock()
+		}
+	})
 }
