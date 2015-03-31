@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"sync"
 	"testing"
 )
@@ -38,5 +39,20 @@ func Benchmark90R10WMutex(b *testing.B) {
 			rwMutex.Lock()
 			rwMutex.Unlock()
 		}
+	}
+}
+
+func BenchmarkFmtPrintln(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		fmt.Print("")
+	}
+}
+
+func BenchmarkMutexFmtPrintln(b *testing.B) {
+	var mutex sync.Mutex
+	for i := 0; i < b.N; i++ {
+		mutex.Lock()
+		fmt.Print("")
+		mutex.Unlock()
 	}
 }
