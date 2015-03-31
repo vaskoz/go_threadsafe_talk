@@ -126,3 +126,23 @@ func BenchmarkParallelMutexFmtPrint(b *testing.B) {
 		}
 	})
 }
+
+func BenchmarkParallelChannelFmtPrint(b *testing.B) {
+	c := make(chan string)
+	go func() {
+		for {
+			select {
+			case s := <-c:
+				fmt.Print(s)
+			}
+		}
+	}()
+
+	b.ResetTimer()
+	b.SetParallelism(10000)
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			c <- ""
+		}
+	})
+}
