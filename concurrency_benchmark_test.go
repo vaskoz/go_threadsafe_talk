@@ -72,3 +72,18 @@ func BenchmarkBufferedChannelFmtPrint(b *testing.B) {
 		<-c
 	}
 }
+
+func BenchmarkConcurrentRWMutexFmtPrint(b *testing.B) {
+	var rwMutex sync.RWMutex
+	// Load contention generation only
+	for i := 0; i < 1000000; i++ {
+		go func() {
+			rwMutex.RLock()
+			rwMutex.RUnlock()
+		}()
+	}
+	for i := 0; i < b.N; i++ {
+		rwMutex.Lock()
+		rwMutex.Unlock()
+	}
+}
